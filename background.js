@@ -36,18 +36,82 @@ async function randomizeTabOrder() {
   }
 }
 
+// Function to create a derangement (permutation where no element is in its original position)
+function createDerangement(length) {
+  if (length <= 1) return [0];
+  if (length === 2) return [1, 0];
+  
+  let derangement = [];
+  let attempts = 0;
+  
+  // Keep trying until we get a valid derangement
+  do {
+    derangement = Array.from({ length }, (_, i) => i);
+    // Fisher-Yates shuffle
+    for (let i = derangement.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [derangement[i], derangement[j]] = [derangement[j], derangement[i]];
+    }
+    attempts++;
+    // Check if it's a valid derangement (no element in original position)
+    const isValid = derangement.every((val, idx) => val !== idx);
+    if (isValid) break;
+  } while (attempts < 100); // Safety limit
+  
+  // If we still don't have a derangement, force swaps to ensure no fixed points
+  if (derangement.some((val, idx) => val === idx)) {
+    // Find all fixed points
+    const fixedPoints = [];
+    for (let i = 0; i < derangement.length; i++) {
+      if (derangement[i] === i) {
+        fixedPoints.push(i);
+      }
+    }
+    // Swap fixed points in pairs
+    for (let i = 0; i < fixedPoints.length - 1; i += 2) {
+      const idx1 = fixedPoints[i];
+      const idx2 = fixedPoints[i + 1];
+      [derangement[idx1], derangement[idx2]] = [derangement[idx2], derangement[idx1]];
+    }
+    // If odd number of fixed points, swap last one with a random non-fixed point
+    if (fixedPoints.length % 2 === 1) {
+      const lastFixed = fixedPoints[fixedPoints.length - 1];
+      for (let i = 0; i < derangement.length; i++) {
+        if (i !== lastFixed && derangement[i] !== i) {
+          [derangement[lastFixed], derangement[i]] = [derangement[i], derangement[lastFixed]];
+          break;
+        }
+      }
+    }
+  }
+  
+  return derangement;
+}
+
 // Function to randomize tab names and icons
 async function randomizeTabNamesAndIcons() {
   try {
     const tabs = await chrome.tabs.query({ currentWindow: true });
-    const unpinnedTabs = tabs.filter(tab => !tab.pinned);
+    // Filter out pinned tabs, data: URLs (placeholder tabs), chrome:// pages, and placeholder title
+    const unpinnedTabs = tabs.filter(tab => 
+      !tab.pinned && 
+      tab.url && 
+      !tab.url.startsWith('data:') && 
+      !tab.url.startsWith('chrome://') && 
+      !tab.url.startsWith('chrome-extension://') &&
+      tab.title !== 'Randomizing Tabs...'
+    );
     
     if (unpinnedTabs.length <= 1) {
       return;
     }
     
-    // Store original data if not already stored
+    // Store original data if not already stored (only for valid tabs)
     for (const tab of unpinnedTabs) {
+      // Double-check we're not storing placeholder data
+      if (tab.title === 'Randomizing Tabs...' || tab.url.startsWith('data:')) {
+        continue;
+      }
       if (!originalTabData.has(tab.id)) {
         originalTabData.set(tab.id, {
           title: tab.title,
@@ -56,23 +120,35 @@ async function randomizeTabNamesAndIcons() {
       }
     }
     
-    // Collect titles and favicons
-    const titles = unpinnedTabs.map(tab => originalTabData.get(tab.id)?.title || tab.title);
-    const favicons = unpinnedTabs.map(tab => originalTabData.get(tab.id)?.favIconUrl || tab.favIconUrl || '');
+    // Collect titles and favicons from stored original data (skip any that don't have stored data)
+    const validTabs = [];
+    const titles = [];
+    const favicons = [];
     
-    // Shuffle arrays
-    const shuffledTitles = [...titles];
-    const shuffledFavicons = [...favicons];
-    
-    for (let i = shuffledTitles.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledTitles[i], shuffledTitles[j]] = [shuffledTitles[j], shuffledTitles[i]];
-      [shuffledFavicons[i], shuffledFavicons[j]] = [shuffledFavicons[j], shuffledFavicons[i]];
+    for (const tab of unpinnedTabs) {
+      const original = originalTabData.get(tab.id);
+      // Only include tabs that have original data stored (skip placeholders)
+      if (original && original.title !== 'Randomizing Tabs...') {
+        validTabs.push(tab);
+        titles.push(original.title);
+        favicons.push(original.favIconUrl || '');
+      }
     }
     
+    if (validTabs.length <= 1) {
+      return;
+    }
+    
+    // Create derangement to ensure nothing stays in original position
+    const derangement = createDerangement(titles.length);
+    
+    // Apply derangement to create shuffled arrays
+    const shuffledTitles = derangement.map(idx => titles[idx]);
+    const shuffledFavicons = derangement.map(idx => favicons[idx]);
+    
     // Apply shuffled titles and favicons to tabs
-    for (let i = 0; i < unpinnedTabs.length; i++) {
-      const tab = unpinnedTabs[i];
+    for (let i = 0; i < validTabs.length; i++) {
+      const tab = validTabs[i];
       const newTitle = shuffledTitles[i];
       const newFavicon = shuffledFavicons[i];
       
