@@ -5,7 +5,8 @@
   "description": "Randomizes the order of your browser tabs at regular intervals",
   "permissions": [
     "tabs",
-    "storage"
+    "storage",
+    "scripting"
   ],
   "background": {
     "service_worker": "background.js"
