@@ -163,22 +163,42 @@ async function randomizeTabNamesAndIcons() {
                 document.title = title;
               }
               
-              // Update favicon
-              let link = document.querySelector("link[rel*='icon']");
-              if (!link) {
-                link = document.createElement('link');
-                link.rel = 'icon';
-                document.head.appendChild(link);
-              }
+              // Remove all existing favicon links
+              const existingIcons = document.querySelectorAll("link[rel*='icon'], link[rel*='shortcut'], link[rel*='apple-touch-icon']");
+              existingIcons.forEach(icon => icon.remove());
               
-              if (faviconUrl) {
-                link.href = faviconUrl;
-              } else if (title) {
+              // Determine the favicon URL to use
+              let finalFaviconUrl = faviconUrl;
+              if (!finalFaviconUrl && title) {
                 // Fallback: create a simple colored circle with first letter
                 const firstLetter = title.charAt(0).toUpperCase();
                 const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a'];
                 const color = colors[firstLetter.charCodeAt(0) % colors.length];
-                link.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='${color}'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white' font-weight='bold'>${firstLetter}</text></svg>`;
+                finalFaviconUrl = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='${color}'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white' font-weight='bold'>${firstLetter}</text></svg>`;
+              }
+              
+              if (finalFaviconUrl) {
+                // Create primary favicon link
+                const link = document.createElement('link');
+                link.rel = 'icon';
+                link.type = 'image/x-icon';
+                link.href = finalFaviconUrl;
+                document.head.appendChild(link);
+                
+                // Also create shortcut icon for better compatibility
+                const shortcutLink = document.createElement('link');
+                shortcutLink.rel = 'shortcut icon';
+                shortcutLink.href = finalFaviconUrl;
+                document.head.appendChild(shortcutLink);
+                
+                // Try to force browser to update favicon by creating a new link element
+                // Some browsers cache favicons aggressively
+                setTimeout(() => {
+                  const forceLink = document.createElement('link');
+                  forceLink.rel = 'icon';
+                  forceLink.href = finalFaviconUrl + '?t=' + Date.now();
+                  document.head.appendChild(forceLink);
+                }, 100);
               }
             },
             args: [newTitle, newFavicon]
