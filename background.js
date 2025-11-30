@@ -119,7 +119,7 @@ async function randomizeTabNamesAndIcons() {
 }
 
 // Main randomization function
-async function randomizeTabs() {
+async function randomizeTabs(switchToRandomTab = false) {
   if (randomizeMode === 'order') {
     await randomizeTabOrder();
   } else if (randomizeMode === 'names') {
@@ -127,6 +127,57 @@ async function randomizeTabs() {
   } else if (randomizeMode === 'both') {
     await randomizeTabOrder();
     await randomizeTabNamesAndIcons();
+  }
+  
+  // Switch to a random tab if requested
+  if (switchToRandomTab) {
+    try {
+      const tabs = await chrome.tabs.query({ currentWindow: true, pinned: false });
+      if (tabs.length > 0) {
+        const randomTab = tabs[Math.floor(Math.random() * tabs.length)];
+        await chrome.tabs.update(randomTab.id, { active: true });
+      }
+    } catch (error) {
+      console.error('Error switching to random tab:', error);
+    }
+  }
+}
+
+// Randomize with placeholder tab flow
+async function randomizeTabsWithPlaceholder() {
+  try {
+    // Get current active tab
+    const currentTabs = await chrome.tabs.query({ currentWindow: true, active: true });
+    const currentTab = currentTabs[0];
+    
+    // Create placeholder tab
+    const placeholderTab = await chrome.tabs.create({
+      url: 'data:text/html,<html><head><title>Randomizing Tabs...</title></head><body style="font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0;"><div style="text-align: center;"><h1 style="font-size: 48px; margin: 0 0 20px 0;">🎲</h1><h2 style="margin: 0;">Randomizing your tabs...</h2><p style="margin-top: 20px; opacity: 0.8;">Please wait</p></div></body></html>',
+      active: true
+    });
+    
+    // Wait a moment for the placeholder to load
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Perform randomization
+    await randomizeTabs(false);
+    
+    // Wait a bit more to show the randomization happened
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Close placeholder tab
+    await chrome.tabs.remove(placeholderTab.id);
+    
+    // Switch to a random tab
+    const tabs = await chrome.tabs.query({ currentWindow: true, pinned: false });
+    if (tabs.length > 0) {
+      const randomTab = tabs[Math.floor(Math.random() * tabs.length)];
+      await chrome.tabs.update(randomTab.id, { active: true });
+    }
+  } catch (error) {
+    console.error('Error in randomizeTabsWithPlaceholder:', error);
+    // Fallback to regular randomization
+    await randomizeTabs(true);
   }
 }
 
@@ -137,7 +188,10 @@ function startRandomization() {
   }
   
   const intervalMs = randomizeInterval * 1000;
-  intervalId = setInterval(randomizeTabs, intervalMs);
+  // For automatic intervals, randomize and switch to a random tab
+  intervalId = setInterval(() => {
+    randomizeTabs(true); // Switch to random tab after randomization
+  }, intervalMs);
   
   chrome.storage.local.set({ 
     isRunning: true,
@@ -245,7 +299,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       mode: randomizeMode
     });
   } else if (request.action === 'randomizeNow') {
-    randomizeTabs().then(() => {
+    randomizeTabsWithPlaceholder().then(() => {
       sendResponse({ success: true });
     });
     return true;
