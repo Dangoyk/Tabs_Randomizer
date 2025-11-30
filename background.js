@@ -158,6 +158,30 @@ function stopRandomization() {
   }
 }
 
+// Open test tabs for testing the extension
+async function openTestTabs() {
+  try {
+    const testUrls = [
+      'https://www.example.com',
+      'https://www.wikipedia.org',
+      'https://www.github.com',
+      'https://www.stackoverflow.com',
+      'https://www.reddit.com'
+    ];
+    
+    // Open all test tabs
+    for (const url of testUrls) {
+      await chrome.tabs.create({ url: url, active: false });
+    }
+    
+    console.log('Test tabs opened successfully');
+    return true;
+  } catch (error) {
+    console.error('Error opening test tabs:', error);
+    return false;
+  }
+}
+
 // Restore original tab names and icons
 async function restoreTabNamesAndIcons() {
   try {
@@ -228,6 +252,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'restore') {
     restoreTabNamesAndIcons().then(() => {
       sendResponse({ success: true });
+    });
+    return true;
+  } else if (request.action === 'openTestTabs') {
+    openTestTabs().then((success) => {
+      sendResponse({ success: success });
     });
     return true;
   }

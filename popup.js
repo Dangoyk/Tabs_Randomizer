@@ -3,6 +3,7 @@ const intervalInput = document.getElementById('intervalInput');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const randomizeNowBtn = document.getElementById('randomizeNowBtn');
+const testTabsBtn = document.getElementById('testTabsBtn');
 const statusDiv = document.getElementById('status');
 const modeRadios = document.querySelectorAll('input[name="randomizeMode"]');
 
@@ -138,6 +139,22 @@ randomizeNowBtn.addEventListener('click', () => {
           randomizeNowBtn.disabled = false;
         }, 800);
       });
+    }
+  });
+});
+
+// Test Tabs button click
+testTabsBtn.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ action: 'openTestTabs' }, (response) => {
+    if (response && response.success) {
+      // Visual feedback
+      const originalText = testTabsBtn.textContent;
+      testTabsBtn.textContent = '✅ Test Tabs Opened!';
+      testTabsBtn.disabled = true;
+      setTimeout(() => {
+        testTabsBtn.textContent = originalText;
+        testTabsBtn.disabled = false;
+      }, 2000);
     }
   });
 });
