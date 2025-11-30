@@ -296,7 +296,17 @@ async function openTestTabs() {
       'https://www.wikipedia.org',
       'https://www.github.com',
       'https://www.stackoverflow.com',
-      'https://www.reddit.com'
+      'https://www.reddit.com',
+      'https://www.youtube.com',
+      'https://www.twitter.com',
+      'https://www.linkedin.com',
+      'https://www.medium.com',
+      'https://www.netflix.com',
+      'https://www.amazon.com',
+      'https://www.bbc.com',
+      'https://www.cnn.com',
+      'https://www.nytimes.com',
+      'https://www.spotify.com'
     ];
     
     // Open all test tabs
